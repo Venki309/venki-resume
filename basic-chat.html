@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Neel • Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #020b18;
+    --panel: #040f1e;
+    --neon: #00d4ff;
+    --neon2: #0077ff;
+    --neon-glow: rgba(0,212,255,0.18);
+    --neon-glow2: rgba(0,119,255,0.12);
+    --text: #cde8ff;
+    --subtext: #5a8aaa;
+    --sent-bg: linear-gradient(135deg, #0057c2, #0099ee);
+    --recv-bg: #071828;
+    --border: rgba(0,212,255,0.15);
+    --header-h: 72px;
+    --input-h: 68px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Exo 2', sans-serif;
+    color: var(--text);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: gridScroll 20s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  @keyframes gridScroll {
+    from { background-position: 0 0; }
+    to { background-position: 40px 40px; }
+  }
+
+  /* Orb glow in background */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -80px; left: 50%; transform: translateX(-50%);
+    width: 340px; height: 340px;
+    background: radial-gradient(circle, rgba(0,150,255,0.10) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+    animation: orbPulse 4s ease-in-out infinite;
+  }
+
+  @keyframes orbPulse {
+    0%, 100% { opacity: 0.7; transform: translateX(-50%) scale(1); }
+    50% { opacity: 1; transform: translateX(-50%) scale(1.08); }
+  }
+
+  /* ── HEADER ── */
+  header {
+    height: var(--header-h);
+    background: rgba(4,15,30,0.92);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 13px;
+    position: relative;
+    z-index: 10;
+    backdrop-filter: blur(12px);
+    flex-shrink: 0;
+  }
+
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 10%; right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--neon), transparent);
+    animation: scanLine 3s ease-in-out infinite;
+  }
+
+  @keyframes scanLine {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  .back-btn {
+    color: var(--neon);
+    font-size: 20px;
+    cursor: pointer;
+    opacity: 0.8;
+  }
+
+  .avatar-wrap {
+    position: relative;
+    width: 46px; height: 46px;
+    flex-shrink: 0;
+  }
+
+  .avatar {
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #003a6b, #0077cc);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700;
+    color: #fff;
+    border: 2px solid rgba(0,212,255,0.4);
+    box-shadow: 0 0 14px rgba(0,212,255,0.3), 0 0 30px rgba(0,119,255,0.15);
+    letter-spacing: 1px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .avatar-ring {
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(0,212,255,0.25);
+    animation: ringRotate 6s linear infinite;
+  }
+
+  .avatar-ring::before {
+    content: '';
+    position: absolute;
+    top: -2px; left: 50%; transform: translateX(-50%);
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--neon);
+    box-shadow: 0 0 6px var(--neon);
+  }
+
+  @keyframes ringRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .online-dot {
+    position: absolute;
+    bottom: 2px; right: 2px;
+    width: 10px; height: 10px;
+    background: #00ff99;
+    border-radius: 50%;
+    border: 2px solid var(--panel);
+    box-shadow: 0 0 6px #00ff99;
+    z-index: 2;
+    animation: blinkDot 2.5s ease-in-out infinite;
+  }
+
+  @keyframes blinkDot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .contact-info { flex: 1; }
+  .contact-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-shadow: 0 0 10px rgba(0,212,255,0.5);
+  }
+
+  .contact-status {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--neon);
+    opacity: 0.7;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  .header-icons {
+    display: flex; gap: 18px;
+    color: var(--neon);
+    opacity: 0.6;
+    font-size: 17px;
+  }
+
+  /* ── CHAT AREA ── */
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    z-index: 1;
+    scroll-behavior: smooth;
+  }
+
+  #chat::-webkit-scrollbar { width: 3px; }
+  #chat::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.2); border-radius: 2px; }
+
+  /* Date divider */
+  .date-divider {
+    text-align: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--subtext);
+    letter-spacing: 2px;
+    margin: 6px 0;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .date-divider::before, .date-divider::after {
+    content: ''; flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0,212,255,0.15), transparent);
+  }
+
+  /* Bubbles */
+  .bubble-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 7px;
+    animation: bubbleIn 0.25s ease-out;
+  }
+
+  @keyframes bubbleIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .bubble-row.sent { justify-content: flex-end; }
+  .bubble-row.recv { justify-content: flex-start; }
+
+  .recv .mini-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #003a6b, #0077cc);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+    border: 1px solid rgba(0,212,255,0.3);
+    flex-shrink: 0;
+  }
+
+  .bubble {
+    max-width: 74%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-size: 14px;
+    line-height: 1.55;
+    position: relative;
+    word-break: break-word;
+  }
+
+  .sent .bubble {
+    background: var(--sent-bg);
+    border-bottom-right-radius: 4px;
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(0,119,255,0.35);
+  }
+
+  .recv .bubble {
+    background: var(--recv-bg);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+    color: var(--text);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(0,212,255,0.06);
+  }
+
+  .recv .bubble::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(0,212,255,0.04), transparent);
+    pointer-events: none;
+  }
+
+  .bubble-time {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    opacity: 0.45;
+    margin-top: 4px;
+    text-align: right;
+    letter-spacing: 0.5px;
+  }
+
+  .sent .bubble-time { color: rgba(255,255,255,0.7); }
+  .recv .bubble-time { color: var(--neon); }
+
+  /* Typing indicator */
+  #typing-row {
+    display: none;
+    align-items: flex-end;
+    gap: 7px;
+    animation: bubbleIn 0.2s ease-out;
+  }
+
+  #typing-row .mini-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #003a6b, #0077cc);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+    border: 1px solid rgba(0,212,255,0.3);
+    flex-shrink: 0;
+  }
+
+  .typing-bubble {
+    background: var(--recv-bg);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+    border-radius: 18px;
+    padding: 13px 18px;
+    display: flex; gap: 5px; align-items: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+
+  .typing-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--neon);
+    box-shadow: 0 0 6px var(--neon);
+    animation: typingBounce 1.2s ease-in-out infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes typingBounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-6px); opacity: 1; }
+  }
+
+  /* ── INPUT BAR ── */
+  .input-bar {
+    height: var(--input-h);
+    background: rgba(4,15,30,0.95);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 10px;
+    position: relative;
+    z-index: 10;
+    flex-shrink: 0;
+    backdrop-filter: blur(12px);
+  }
+
+  .input-bar::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 10%; right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0,212,255,0.3), transparent);
+  }
+
+  .attach-btn {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: rgba(0,212,255,0.06);
+    border: 1px solid rgba(0,212,255,0.15);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--neon); font-size: 16px;
+    cursor: pointer; flex-shrink: 0;
+  }
+
+  .input-wrap {
+    flex: 1;
+    background: rgba(0,212,255,0.05);
+    border: 1px solid rgba(0,212,255,0.18);
+    border-radius: 24px;
+    display: flex; align-items: center;
+    padding: 0 16px;
+    height: 42px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .input-wrap:focus-within {
+    border-color: rgba(0,212,255,0.5);
+    box-shadow: 0 0 12px rgba(0,212,255,0.12);
+  }
+
+  #msg-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    font-size: 14px;
+    caret-color: var(--neon);
+  }
+
+  #msg-input::placeholder { color: var(--subtext); }
+
+  .emoji-btn {
+    color: var(--subtext);
+    font-size: 18px;
+    cursor: pointer;
+  }
+
+  #send-btn {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--neon2), var(--neon));
+    border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    box-shadow: 0 0 16px rgba(0,212,255,0.4);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+
+  #send-btn:active { transform: scale(0.9); box-shadow: 0 0 8px rgba(0,212,255,0.3); }
+
+  #send-btn svg {
+    width: 18px; height: 18px;
+    fill: #fff;
+    transform: translateX(1px);
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="back-btn">&#8249;</div>
+  <div class="avatar-wrap">
+    <div class="avatar">NL</div>
+    <div class="avatar-ring"></div>
+    <div class="online-dot"></div>
+  </div>
+  <div class="contact-info">
+    <div class="contact-name">Neel</div>
+    <div class="contact-status">● ONLINE · ENCRYPTED</div>
+  </div>
+  <div class="header-icons">
+    <span>&#9654;</span>
+    <span>&#128222;</span>
+    <span>&#8942;</span>
+  </div>
+</header>
+
+<!-- CHAT -->
+<div id="chat">
+  <div class="date-divider">TODAY</div>
+</div>
+
+<!-- TYPING ROW (hidden by default) -->
+<div id="typing-row">
+  <div class="mini-avatar">NL</div>
+  <div class="typing-bubble">
+    <div class="typing-dot"></div>
+    <div class="typing-dot"></div>
+    <div class="typing-dot"></div>
+  </div>
+</div>
+
+<!-- INPUT BAR -->
+<div class="input-bar">
+  <div class="attach-btn">+</div>
+  <div class="input-wrap">
+    <input id="msg-input" type="text" placeholder="Message..." autocomplete="off" />
+    <span class="emoji-btn">&#128578;</span>
+  </div>
+  <button id="send-btn">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M2 21L23 12 2 3v7l15 2-15 2v7z"/>
+    </svg>
+  </button>
+</div>
+
+<script>
+const QA = [
+  {
+    q: "Hey! Is this Neel?",
+    a: "Yes! Hey, how are you? Don't think we've spoken before 😊"
+  },
+  {
+    q: "Hi! I'm Akshara, we have some common friends I think",
+    a: "Oh really! Small world 😄 Which friends?"
+  },
+  {
+    q: "Rahul and Sneha! They mentioned you",
+    a: "Oh those two! Of course, good people 😄 Hope they said nice things only!"
+  },
+  {
+    q: "Only good things, don't worry 😄 What do you do Neel?",
+    a: "I'm into creative tech, kind of hard to explain at a party 😂 What about you?"
+  },
+  {
+    q: "I work in experience design, basically making life more beautiful",
+    a: "That's such a cool way to put it! We might actually have a lot to talk about 😊"
+  },
+  {
+    q: "Do you like outdoor spaces? Like gardens, sky views, that kind of thing?",
+    a: "Are you kidding, I literally went to the Sky Gardens last week just to sit alone and think 😄 Love that place"
+  },
+  {
+    q: "No way! I've been wanting to go there for weeks",
+    a: "You should go! Sunset at Level 55 is something else completely 🌅"
+  },
+  {
+    q: "Maybe we could schedule a meet sometime?",
+    a: "I'd actually really like that 😊 When are you usually free?"
+  },
+  {
+    q: "This Saturday evening works for me",
+    a: "Saturday works perfectly for me too! Shall we say 5 PM?"
+  },
+  {
+    q: "5 PM it is! Looking forward to it 😊",
+    a: "Same here! See you Saturday Akshara 🌿"
+  },
+  {
+    q: "where do you live?",
+    a: "I live in Mumbai — or what's left of it after the sea walls went up 😄"
+  },
+  {
+    q: "what do you do?",
+    a: "I work as a neural interface designer. Basically I design thoughts. Wild, right?"
+  },
+  {
+    q: "Are you looking for a wife or fish?",
+    a: "😄 😄"
+  },
+  {
+    q: "What's your take on AI?",
+    a: "I use AI for all my daily chores and tasks, So I'll have more time for creative stuff like painting, writing and so on."
+  },
+  {
+    q: "What's your view on husband and wife relationship?",
+    a: "Once upon a time, I heard it from a famous man. \n The relationship between the husband and wife should be like a fish and fisherman. \n But not like a fish and water."
+  },
+  {
+    q: "Am I eligible for Neel's fish?",
+    a: "Well few more fishes are in the waiting list. Need to run compatibility reports."
+  },
+  {
+    q: "Bye!",
+    a: "Bye!! See You in real world!"
+  },
+  {
+    q: "Waiting for your response",
+    a: "Thank you for your interest in the Saturday date. While we admire your warmth and enthusiasm, we will not be moving forward at this time. Due to the large volume of connections we are currently exploring, we are unable to provide individual feedback. We hope you had a positive experience and wish you well in your future connections. 😊"
+  }
+];
+
+const chat = document.getElementById('chat');
+const typingRow = document.getElementById('typing-row');
+const input = document.getElementById('msg-input');
+const sendBtn = document.getElementById('send-btn');
+
+function getTime() {
+  const now = new Date();
+  return now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+}
+
+function addBubble(text, type) {
+  const row = document.createElement('div');
+  row.className = `bubble-row ${type}`;
+
+  if (type === 'recv') {
+    const av = document.createElement('div');
+    av.className = 'mini-avatar';
+    av.textContent = 'NL';
+    row.appendChild(av);
+  }
+
+  const bWrap = document.createElement('div');
+  const b = document.createElement('div');
+  b.className = 'bubble';
+  b.textContent = text;
+  const t = document.createElement('div');
+  t.className = 'bubble-time';
+  t.textContent = getTime();
+  bWrap.appendChild(b);
+  bWrap.appendChild(t);
+  row.appendChild(bWrap);
+
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+  return row;
+}
+
+function showTyping() {
+  chat.appendChild(typingRow);
+  typingRow.style.display = 'flex';
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function hideTyping() {
+  typingRow.style.display = 'none';
+}
+
+async function getAIReply(prompt) {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  const data = await response.json();
+  return data.content.map(i => i.text || '').join('');
+}
+
+function findMatch(msg) {
+  const norm = msg.toLowerCase().trim().replace(/[^a-z0-9 ,?!]/g, '');
+  for (const qa of QA) {
+    const qNorm = qa.q.toLowerCase().replace(/[^a-z0-9 ,?!]/g, '');
+    if (norm === qNorm || norm.includes(qNorm) || qNorm.includes(norm)) {
+      return qa;
+    }
+  }
+  return null;
+}
+
+async function sendMessage() {
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  addBubble(text, 'sent');
+
+  const match = findMatch(text);
+
+  showTyping();
+
+  // small delay for realism
+  await new Promise(r => setTimeout(r, 900 + Math.random() * 700));
+
+  hideTyping();
+
+  if (match) {
+    let reply;
+    if (match.a) {
+      reply = match.a;
+    } else {
+      try {
+        reply = await getAIReply(match.prompt);
+      } catch(e) {
+        reply = "Connection to 2052 neural grid failed... try again! 🛸";
+      }
+    }
+    addBubble(reply, 'recv');
+  } else {
+    addBubble("Signal from 2052: no data found for that query. 🤖", 'recv');
+  }
+}
+
+Here's the complete updated script section. Replace everything from <script> to </script> with this:
+javascript<script>
+const QA = [
+  {
+    q: "hello neel, how are you?",
+    a: "Doing Good"
+  },
+  {
+    q: "what is your name?",
+    a: "My name is Neel! 👋"
+  },
+  {
+    q: "where do you live?",
+    a: "I live in Mumbai — or what's left of it after the sea walls went up 😄"
+  },
+  {
+    q: "what do you do?",
+    a: "I work as a neural interface designer. Basically I design thoughts. Wild, right?"
+  },
+  {
+    q: "Are you looking for a wife or fish?",
+    a: "😄 😄"
+  },
+  {
+    q: "What's your take on AI?",
+    a: "I use AI for all my daily chores and tasks, So I'll have more time for creative stuff like painting, writing and so on."
+  },
+  {
+    q: "What's your view on husband and wife relationship?",
+    a: "Once upon a time, I heard it from a famous man.\nThe relationship between the husband and wife should be like a fish and fisherman.\nBut not like a fish and water."
+  },
+  {
+    q: "Am I eligible for Neel's fish?",
+    a: "Well few more fishes are in the waiting list. Need to run compatibility reports."
+  },
+  {
+    q: "Bye!",
+    a: "Bye!! See You in real world!"
+  },
+  {
+    q: "Waiting for your response",
+    a: "Thank you for your interest in the Saturday date. While we admire your warmth and enthusiasm, we will not be moving forward at this time. Due to the large volume of connections we are currently exploring, we are unable to provide individual feedback. We hope you had a positive experience and wish you well in your future connections. 😊"
+  }
+];
+
+const autoConvo = [
+  { from: 'sent', text: "Hey! Is this Neel?" },
+  { from: 'recv', text: "Yes! Hey, how are you? Don't think we've spoken before 😊" },
+  { from: 'sent', text: "Hi! I'm Priya, we have some common friends I think" },
+  { from: 'recv', text: "Oh really! Small world 😄 Which friends?" },
+  { from: 'sent', text: "Rahul and Sneha! They mentioned you" },
+  { from: 'recv', text: "Oh those two! Of course, good people 😄 Hope they said nice things only!" },
+  { from: 'sent', text: "Only good things, don't worry 😄 What do you do Neel?" },
+  { from: 'recv', text: "I'm into creative tech, kind of hard to explain at a party 😂 What about you?" },
+  { from: 'sent', text: "I work in experience design, basically making life more beautiful" },
+  { from: 'recv', text: "That's such a cool way to put it! We might actually have a lot to talk about 😊" },
+  { from: 'sent', text: "Where do you live Neel?" },
+  { from: 'recv', text: "I live in Mumbai — or what's left of it after the sea walls went up 😄" },
+  { from: 'sent', text: "What's your take on AI?" },
+  { from: 'recv', text: "I use AI for all my daily chores and tasks, so I'll have more time for creative stuff like painting, writing and so on." },
+  { from: 'sent', text: "Do you like outdoor spaces? Like gardens, sky views, that kind of thing?" },
+  { from: 'recv', text: "Are you kidding, I literally went to the Sky Gardens last week just to sit alone and think 😄 Love that place" },
+  { from: 'sent', text: "No way! I've been wanting to go there for weeks" },
+  { from: 'recv', text: "You should go! Sunset at Level 55 is something else completely 🌅" },
+  { from: 'sent', text: "Maybe we could go together sometime?" },
+  { from: 'recv', text: "I'd actually really like that 😊 When are you usually free?" },
+  { from: 'sent', text: "This Saturday evening works for me" },
+  { from: 'recv', text: "Saturday works perfectly for me too! Shall we say 5 PM at the main entrance?" },
+  { from: 'sent', text: "5 PM it is! Looking forward to it 😊" },
+  { from: 'recv', text: "Same here! See you Saturday Priya 🌿" },
+  { from: 'sent', text: "Are you looking for a wife or fish?" },
+  { from: 'recv', text: "😄 😄" },
+  { from: 'sent', text: "What's your view on husband and wife relationship?" },
+  { from: 'recv', text: "Once upon a time, I heard it from a famous man.\nThe relationship between the husband and wife should be like a fish and fisherman.\nBut not like a fish and water." },
+  { from: 'sent', text: "Am I eligible for Neel's fish?" },
+  { from: 'recv', text: "Well few more fishes are in the waiting list. Need to run compatibility reports." },
+  { from: 'sent', text: "Waiting for your response" },
+  { from: 'recv', text: "Thank you for your interest in the Saturday date. While we admire your warmth and enthusiasm, we will not be moving forward at this time. Due to the large volume of connections we are currently exploring, we are unable to provide individual feedback. We hope you had a positive experience and wish you well in your future connections. 😊" },
+  { from: 'sent', text: "Bye!" },
+  { from: 'recv', text: "Bye!! See You in real world! 🌿" }
+];
+
+const chat = document.getElementById('chat');
+const typingRow = document.getElementById('typing-row');
+const input = document.getElementById('msg-input');
+const sendBtn = document.getElementById('send-btn');
+
+// ── SENT TYPING INDICATOR ──
+const sentTypingRow = document.createElement('div');
+sentTypingRow.className = 'bubble-row sent';
+sentTypingRow.innerHTML = `
+  <div>
+    <div class="typing-bubble" style="background:linear-gradient(135deg,#0057c2,#0099ee); border:none; box-shadow:0 4px 20px rgba(0,119,255,0.35);">
+      <div class="typing-dot" style="background:#fff; box-shadow:0 0 6px #fff;"></div>
+      <div class="typing-dot" style="background:#fff; box-shadow:0 0 6px #fff; animation-delay:0.2s;"></div>
+      <div class="typing-dot" style="background:#fff; box-shadow:0 0 6px #fff; animation-delay:0.4s;"></div>
+    </div>
+  </div>`;
+
+function getTime() {
+  const now = new Date();
+  return now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+}
+
+function addBubble(text, type) {
+  const row = document.createElement('div');
+  row.className = `bubble-row ${type}`;
+
+  if (type === 'recv') {
+    const av = document.createElement('div');
+    av.className = 'mini-avatar';
+    av.textContent = 'NL';
+    row.appendChild(av);
+  }
+
+  const bWrap = document.createElement('div');
+  const b = document.createElement('div');
+  b.className = 'bubble';
+  b.innerText = text;
+  const t = document.createElement('div');
+  t.className = 'bubble-time';
+  t.textContent = getTime();
+  bWrap.appendChild(b);
+  bWrap.appendChild(t);
+  row.appendChild(bWrap);
+
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+  return row;
+}
+
+function showTyping() {
+  chat.appendChild(typingRow);
+  typingRow.style.display = 'flex';
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function hideTyping() {
+  typingRow.style.display = 'none';
+}
+
+function showSentTyping() {
+  chat.appendChild(sentTypingRow);
+  sentTypingRow.style.display = 'flex';
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function hideSentTyping() {
+  sentTypingRow.style.display = 'none';
+}
+
+async function getAIReply(prompt) {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  const data = await response.json();
+  return data.content.map(i => i.text || '').join('');
+}
+
+function findMatch(msg) {
+  const norm = msg.toLowerCase().trim().replace(/[^a-z0-9 ,?!]/g, '');
+  for (const qa of QA) {
+    const qNorm = qa.q.toLowerCase().replace(/[^a-z0-9 ,?!]/g, '');
+    if (norm === qNorm || norm.includes(qNorm) || qNorm.includes(norm)) {
+      return qa;
+    }
+  }
+  return null;
+}
+
+let autoRunning = false;
+
+async function runAutoConvo() {
+  if (autoRunning) return;
+  autoRunning = true;
+
+  for (let i = 0; i < autoConvo.length; i++) {
+    const msg = autoConvo[i];
+
+    if (msg.from === 'sent') {
+      showSentTyping();
+      await new Promise(r => setTimeout(r, 800 + Math.random() * 600));
+      hideSentTyping();
+    } else {
+      showTyping();
+      await new Promise(r => setTimeout(r, 1000 + Math.random() * 800));
+      hideTyping();
+    }
+
+    addBubble(msg.text, msg.from);
+  }
+
+  autoRunning = false;
+}
+
+async function sendMessage() {
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  const norm = text.toLowerCase().trim();
+
+  if (norm === 'hi' || norm === 'hello' || norm === 'hey') {
+    addBubble(text, 'sent');
+    await new Promise(r => setTimeout(r, 500));
+    runAutoConvo();
+    return;
+  }
+
+  addBubble(text, 'sent');
+  const match = findMatch(text);
+  showTyping();
+  await new Promise(r => setTimeout(r, 900 + Math.random() * 700));
+  hideTyping();
+
+  if (match) {
+    let reply;
+    if (match.a) {
+      reply = match.a;
+    } else {
+      try {
+        reply = await getAIReply(match.prompt);
+      } catch(e) {
+        reply = "Connection to 2052 neural grid failed... try again! 🛸";
+      }
+    }
+    addBubble(reply, 'recv');
+  } else {
+    addBubble("Signal from 2052: no data found for that query. 🤖", 'recv');
+  }
+}
+
+sendBtn.addEventListener('click', sendMessage);
+input.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
+</script>
+</body>
+</html>
